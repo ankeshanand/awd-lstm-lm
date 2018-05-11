@@ -2,6 +2,7 @@ from collections import defaultdict
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 import numpy as np
 
@@ -36,7 +37,7 @@ class SplitCrossEntropyLoss(nn.Module):
 
             # Perform the softmax calculation for the word vectors in the head for all splits
             # We need to guard against empty splits as torch.cat does not like random lists
-            head_res = torch.nn.functional.linear(hiddens, head_weight, bias=head_bias)
+            head_res = F.selu(torch.nn.functional.linear(hiddens, head_weight, bias=head_bias))
             softmaxed_head_res = torch.nn.functional.log_softmax(head_res)
 
         if splits is None:
@@ -57,7 +58,7 @@ class SplitCrossEntropyLoss(nn.Module):
                 tail_bias = bias[start:end]
 
                 # Calculate the softmax for the words in the tombstone
-                tail_res = torch.nn.functional.linear(hiddens, tail_weight, bias=tail_bias)
+                tail_res = F.selu(torch.nn.functional.linear(hiddens, tail_weight, bias=tail_bias))
 
                 # Then we calculate p(tombstone) * p(word in tombstone)
                 # Adding is equivalent to multiplication in log space
@@ -128,7 +129,7 @@ class SplitCrossEntropyLoss(nn.Module):
         # We need to guard against empty splits as torch.cat does not like random lists
         combo = torch.cat([split_hiddens[i] for i in range(self.nsplits) if len(split_hiddens[i])])
         ###
-        all_head_res = torch.nn.functional.linear(combo, head_weight, bias=head_bias)
+        all_head_res = F.selu(torch.nn.functional.linear(combo, head_weight, bias=head_bias))
         softmaxed_all_head_res = torch.nn.functional.log_softmax(all_head_res)
         if self.verbose or verbose:
             self.stats[0].append(combo.size()[0] * head_weight.size()[0])
